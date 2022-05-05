@@ -11,23 +11,27 @@ use Phabel\ClassStorageProvider;
 use Phabel\Context;
 use Phabel\Plugin;
 use Phabel\RootNode;
+use Phabel\Tools;
 use PhpParser\Builder\Class_;
 use PhpParser\Builder\Method;
 use PhpParser\Builder\Param;
 use PhpParser\BuilderHelpers;
 use PhpParser\Node;
+use PhpParser\Node\Const_;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt\Class_ as StmtClass_;
+use PhpParser\Node\Stmt\ClassConst;
 use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\Node\Stmt\Trait_;
 use PhpParser\Node\UnionType;
 use ReflectionClass;
+use ReflectionClassConstant;
 use ReflectionFunction;
 use ReflectionNamedType;
 use ReflectionType;
@@ -323,8 +327,24 @@ final class ClassStoragePlugin extends Plugin
                     }
                     $methods []= new ClassMethod($method->getName(), $b);
                 }
+                $constants = [];
+                foreach ($class->getConstants() as $key => $value) {
+                    $const = new ReflectionClassConstant($class->getName(), $key);
+                    if ($const->isPrivate()) {
+                        $visibility = StmtClass_::MODIFIER_PRIVATE;
+                    } else if ($const->isProtected()) {
+                        $visibility = StmtClass_::MODIFIER_PROTECTED;
+                    } else {
+                        $visibility = StmtClass_::MODIFIER_PUBLIC;
+                    }
+                    if ($const->isFinal()) {
+                        $visibility |= StmtClass_::MODIFIER_FINAL;
+                    }
+                    $constants []= new ClassConst([new Const_($key, Tools::fromLiteral($value))], $visibility);
+                }
                 $classBuilder = new Class_($class->getName());
                 $classBuilder->addStmts($methods);
+                $classBuilder->addStmts($constants);
                 if ($class->isFinal()) {
                     $classBuilder->makeFinal();
                 }

@@ -37,5 +37,11 @@ class ListExpressionTest extends TestCase
 
         $d = 'pony';
         $this->assertEquals('pony', $arr[3]);
+
+        $test = [['a', 'b']];
+        while ([$a, $b] = array_pop($test)) {
+            $this->assertEquals('a', $a);
+            $this->assertEquals('b', $b);
+        }
     }
 }

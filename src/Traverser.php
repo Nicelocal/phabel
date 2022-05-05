@@ -498,7 +498,7 @@ class Traverser
                     $this->input = $this->output;
                     $this->composerPaths = [];
                     $this->setPlugins($plugins);
-                    return $this->run();
+                    return $this->runReal();
                 }
             }
 
@@ -534,49 +534,56 @@ class Traverser
      */
     public function run(int $threads = 1): array
     {
-        $this->iteration++;
-        try {
-            if ($threads > 1 || $threads === -1) {
-                return $this->runAsync($threads);
-            }
-            \set_error_handler(
-                function (int $errno = 0, string $errstr = '', string $errfile = '', int $errline = -1): bool {
-                    // If error is suppressed with @, don't throw an exception
-                    if (\error_reporting() === 0) {
-                        return false;
-                    }
-                    throw new Exception($errstr, $errno, null, $errfile, $errline);
-                }
-            );
-
-            $packages = [];
-
-            $this->eventHandler?->onStart();
-            $this->prepareFiles();
-            while (true) {
-                $this->runInternal();
-                $packages += $this->graph->getPackages();
-                $classStorage = $this->graph->getClassStorage();
-                if (!$classStorage) {
-                    break;
-                }
-                [$plugins, $this->files] = $classStorage->finish($this->iteration);
-                unset($classStorage);
-                if (!$plugins || !$this->files) {
-                    break;
-                }
-                $this->input = $this->output;
-                $this->composerPaths = [];
-                $this->setPlugins($plugins);
-            }
-            $this->eventHandler?->onEnd();
-
-            \restore_error_handler();
-
-            return $packages;
-        } finally {
-            $this->iteration--;
+        $this->iteration = 0;
+        return $this->runReal($threads);
+    }
+    /**
+     * Run phabel.
+     *
+     * @return array<string, string>
+     */
+    private function runReal(int $threads = 1): array
+    {
+        if ($threads > 1 || $threads === -1) {
+            $this->iteration++;
+            return $this->runAsync($threads);
         }
+        \set_error_handler(
+            function (int $errno = 0, string $errstr = '', string $errfile = '', int $errline = -1): bool {
+                // If error is suppressed with @, don't throw an exception
+                if (\error_reporting() === 0) {
+                    return false;
+                }
+                throw new Exception($errstr, $errno, null, $errfile, $errline);
+            }
+        );
+
+        $packages = [];
+
+        $this->eventHandler?->onStart();
+        $this->prepareFiles();
+        while (true) {
+            $this->iteration++;
+            $this->runInternal();
+            $packages += $this->graph->getPackages();
+            $classStorage = $this->graph->getClassStorage();
+            if (!$classStorage) {
+                break;
+            }
+            [$plugins, $this->files] = $classStorage->finish($this->iteration);
+            unset($classStorage);
+            if (!$plugins || !$this->files) {
+                break;
+            }
+            $this->input = $this->output;
+            $this->composerPaths = [];
+            $this->setPlugins($plugins);
+        }
+        $this->eventHandler?->onEnd();
+
+        \restore_error_handler();
+
+        return $packages;
     }
     /**
      * Run phabel (internal function).

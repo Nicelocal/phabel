@@ -7,6 +7,11 @@ use PhpParser\Node\Arg;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
+use PhpParser\PrettyPrinter\Standard;
+use ReflectionClass;
 
 /**
  * Plugin.
@@ -86,6 +91,14 @@ abstract class Plugin extends Tools implements PluginInterface
         return !\str_contains($file, 'vendor/composer/');
     }
     /**
+     * @var array<class-string, array<string, ClassMethod>>
+     */
+    private static array $polyCache = [];
+    /**
+     * @var array<string, ClassMethod>
+     */
+    public static array $usedMethods = [];
+    /**
      * Call polyfill function from current plugin.
      *
      * @param string   $name          Function name
@@ -95,7 +108,32 @@ abstract class Plugin extends Tools implements PluginInterface
      */
     protected static function callPoly(string $name, ...$parameters): StaticCall
     {
-        return self::call([static::class, $name], ...$parameters);
+        $reflection = new ReflectionClass(static::class);
+        $method = $reflection->getMethod($name);
+        if (!$method->isStatic()) {
+            throw new \RuntimeException('The specified method must be static!');
+        }
+        if (!$method->isPublic()) {
+            throw new \RuntimeException('The specified method must be public!');
+        }
+        if (!isset(self::$polyCache[static::class])) {
+            self::$polyCache[static::class] = [];
+            $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+            $printer = new Standard();
+            $ast = $parser->parse(file_get_contents($reflection->getFileName()));
+            $finder = new NodeFinder;
+            foreach ($finder->findInstanceOf($ast, ClassMethod::class) as $method) {
+                if ($method->isPublic() && $method->isStatic()) {
+                    $realName = $method->name->name;
+                    $method->name->name .= '_'.hash('sha256', $printer->prettyPrint([$method]));
+                    self::$polyCache[static::class][$realName] = $method;
+                }
+            }
+        }
+        $method = self::$polyCache[static::class][$name];
+        $name = $method->name->name;
+        self::$usedMethods[$name] = $method;
+        return self::call(['PhabelPolyfill', $name], ...$parameters);
     }
     /**
      * {@inheritDoc}

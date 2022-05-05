@@ -29,10 +29,13 @@ use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt\ClassLike;
+use PhpParser\Node\Stmt\Do_;
 use PhpParser\Node\Stmt\Else_;
 use PhpParser\Node\Stmt\Expression;
+use PhpParser\Node\Stmt\For_;
 use PhpParser\Node\Stmt\Foreach_;
 use PhpParser\Node\Stmt\If_;
+use PhpParser\Node\Stmt\While_;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\PrettyPrinter\Standard;
 use PhpParser\PrettyPrinterAbstract;
@@ -117,8 +120,9 @@ class Context
      */
     public function pushResolve(Node $node): void
     {
-        if (!$node instanceof FullyQualified) {
+        if (!$node->getAttribute('Context:nameResolved')) {
             $this->nameResolver->enterNode($node);
+            $node->setAttribute('Context:nameResolved', true);
         }
     }
     /**
@@ -276,7 +280,7 @@ class Context
 
         /** @var string */
         $parentKey = $parent->getAttribute('currentNode');
-        if ($parentKey === 'stmts' && !$parent instanceof ClassLike) {
+        if (($parentKey === 'stmts' || $parent instanceof For_) && !$parent instanceof ClassLike) {
             /** @var int */
             $nodeKeyIndex = $parent->getAttribute('currentNodeIndex');
             \array_splice($parent->{$parentKey}, $nodeKeyIndex, 0, $insert);
@@ -341,11 +345,11 @@ class Context
                     $parent->cond,
                     [
                         'stmts' => [
-                            ...$parentKey === 'left' ? $insert : [],
+                            ...$parentKey === 'if' ? $insert : [],
                             new Assign($result, $parent->if)
                         ],
                         'else' => new Else_([
-                            ...$parentKey === 'right' ? $insert : [],
+                            ...$parentKey === 'else' ? $insert : [],
                             new Assign($result, $parent->else)
                         ])
                     ]
@@ -367,6 +371,11 @@ class Context
                 ]
             );
             $parent = $result;
+        } elseif ($parent instanceof While_) {
+            $parent->stmts = array_merge($parent->stmts, $insert);
+        } elseif ($parent instanceof Do_) {
+            $parent->stmts = array_merge($parent->stmts, $insert);
+            return;
         }
         $this->insertBefore($parent, ...(\is_array($insert) ? $insert : [$insert]));
     }

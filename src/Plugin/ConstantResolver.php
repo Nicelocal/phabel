@@ -6,6 +6,7 @@ use Phabel\Plugin;
 use Phabel\Traverser;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Scalar\String_;
 
 /**
  * @author Daniil Gentili <daniil@daniil.it>
@@ -63,6 +64,9 @@ class ConstantResolver extends Plugin
             $class = $this->currentClass;
         } else {
             $class = self::getFqdn($var->class);
+        }
+        if ($var->name->name === 'class') {
+            return new String_($class);
         }
         return \array_values($this->plugin->classes[$class])[0]->constants[$var->name->name];
     }

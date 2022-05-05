@@ -6,8 +6,11 @@ use Phabel\ClassStorage;
 use Phabel\ClassStorageProvider;
 use Phabel\Tools;
 use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Name;
 use PhpParser\Node\Param;
+use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\ClassConst;
+use PhpParser\Node\Stmt\PropertyProperty;
 
 /**
  * @author Daniil Gentili <daniil@daniil.it>
@@ -19,26 +22,35 @@ class ConstantReplacer extends ClassStorageProvider
     {
         return $iteration === 1 && $innerIteration === 1;
     }
-    private bool $inParam = false;
-    public function enterParam(Param $param)
-    {
-        $this->inParam = true;
-    }
     public function leaveParam(Param $param)
     {
         if ($param->default) {
             try {
                 $param->default = Tools::fromLiteral(Tools::toLiteral($param->default));
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                throw $e;
                 // Ignore errors caused by constant lookups
             }
         }
-        $this->inParam = false;
+    }
+    public function leaveProperty(PropertyProperty $property)
+    {
+        if ($property->default) {
+            try {
+                $property->default = Tools::fromLiteral(Tools::toLiteral($property->default));
+            } catch (\Throwable $e) {
+                throw $e;
+                // Ignore errors caused by constant lookups
+            }
+        }
     }
     public function enterFetch(ClassConstFetch $fetch)
     {
-        if ($this->inParam) {
+        if (true) {
             try {
+                if ($fetch->name->name === 'class' && $fetch->class instanceof Name && !$fetch->class->isSpecialClassName()) {
+                    return new String_($fetch->class->toString());
+                }
                 return self::fromLiteral(
                     (
                         ((string) $fetch->class) === 'self'
@@ -47,6 +59,7 @@ class ConstantReplacer extends ClassStorageProvider
                     )->getConstant($fetch->name)
                 );
             } catch (\Throwable $e) {
+                //throw $e;
                 // Ignore missing constants for now since we didn't implement normal constant lookup
             }
         }
@@ -58,9 +71,14 @@ class ConstantReplacer extends ClassStorageProvider
                 $const->value = self::fromLiteral(
                     $this->storage->getConstant($const->name)
                 );
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                throw $e;
                 // Ignore missing constants for now since we didn't implement normal constant lookup
             }
         }
+    }
+    public static function next(array $config): array
+    {
+        return [\PhpToZephir\Transforms\Stage2::class];
     }
 }

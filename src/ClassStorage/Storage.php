@@ -77,7 +77,8 @@ class Storage
         foreach ($constants as $name => $constant) {
             try {
                 $this->constants[$name] = Tools::toLiteral($constant);
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                throw $e;
                 // Ignore errors caused by constant lookups
             }
         }
@@ -147,7 +148,18 @@ class Storage
      */
     public function getConstant(string $name): mixed
     {
-        return $this->constants[$name];
+        if ($name === 'class') {
+            return $this->name;
+        }
+        if (isset($this->constants[$name])) {
+            return $this->constants[$name];
+        }
+        foreach ($this->getAllParents() as $class) {
+            if (isset($class->constants[$name])) {
+                return $class->constants[$name];
+            }
+        }
+        throw new \RuntimeException("Could not find constant $name for {$this->name}");
     }
 
     /**

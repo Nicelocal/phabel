@@ -228,7 +228,8 @@ class Builder
         foreach ($this->constants as $name => $constant) {
             try {
                 $this->constantsResolved[$name] = ConstantResolver::resolve($constant, $this->name, $plugin);
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                throw $e;
             }
         }
         $this->resolving = false;

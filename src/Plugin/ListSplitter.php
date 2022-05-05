@@ -115,6 +115,9 @@ class ListSplitter extends Plugin
      */
     private function shouldSplit($list): bool
     {
+        if ($this->getConfig('always', false)) {
+            return true;
+        }
         foreach ($list->items as $item) {
             if (!$item) {
                 continue;

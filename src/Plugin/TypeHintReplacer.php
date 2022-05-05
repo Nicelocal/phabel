@@ -48,6 +48,7 @@ use PhpParser\Node\Stmt\Expression;
 use PhpParser\Node\Stmt\Foreach_;
 use PhpParser\Node\Stmt\If_;
 use PhpParser\Node\Stmt\Interface_;
+use PhpParser\Node\Stmt\Nop;
 use PhpParser\Node\Stmt\Property;
 use PhpParser\Node\Stmt\PropertyProperty;
 use PhpParser\Node\Stmt\Return_;
@@ -562,6 +563,9 @@ class TypeHintReplacer extends Plugin
             $index++;
 
             $param->type = null;
+            if (!$this->getConfig('strict', true)) {
+                continue;
+            }
             [$string, $condition] = $condition;
             $start = $param->variadic
                 ? new Concat(new String_("(): Argument #"), new Plus(new LNumber($index), new Variable('phabelVariadicIndex')))
@@ -594,7 +598,6 @@ class TypeHintReplacer extends Plugin
             $func->setDocComment(new Doc($phpdoc));
             return $func;
         }
-        $var = new Variable('phabelReturn');
         if (!$condition = $this->strip($ctx, $phpdoc, null, $returnType, $className, false, $this->getConfig('return', false))) {
             $this->stack->push([self::IGNORE_RETURN]);
             $func->setDocComment(new Doc($phpdoc));
@@ -632,7 +635,7 @@ class TypeHintReplacer extends Plugin
             return null;
         }
         $current = $this->stack->top();
-        if ($current[0] === self::IGNORE_RETURN) {
+        if ($current[0] === self::IGNORE_RETURN || !$this->getConfig('strict', true)) {
             return null;
         }
         if ($current[0] === self::VOID_RETURN) {
@@ -703,7 +706,7 @@ class TypeHintReplacer extends Plugin
     public static function trace()
     {
         $trace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-        return ($trace['file'] ?? '').' on line '.($trace['line'] ?? '');
+        return (isset($trace['file']) ? $trace['file'] : '').' on line '.(isset($trace['line']) ? $trace['line'] : '');
     }
     /**
      * Get debug type.

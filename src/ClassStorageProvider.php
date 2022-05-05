@@ -49,11 +49,6 @@ abstract class ClassStorageProvider extends Plugin implements JsonSerializable
      */
     public function enterClassStorage(ClassLike $class, Context $context): void
     {
-        if ($class->hasAttribute(self::PROCESSED)) {
-            return;
-        }
-        $class->setAttribute(self::PROCESSED, true);
-
         $file = $context->getOutputFile();
         if ($class->name) {
             $name = self::getFqdn($class);
@@ -62,13 +57,18 @@ abstract class ClassStorageProvider extends Plugin implements JsonSerializable
             $this->count[$file][$name] ??= 0;
             $name .= "@".$this->count[$file][$name]++;
         }
-        $storage = $this->getGlobalClassStorage()->getClass($file, $name);
+        $this->storage = $this->getGlobalClassStorage()->getClass($file, $name);
+        
+        if ($class->hasAttribute(self::PROCESSED)) {
+            return;
+        }
+        $class->setAttribute(self::PROCESSED, true);
+
         foreach ($class->stmts as $k => $stmt) {
-            if ($stmt instanceof ClassMethod && $storage->process($stmt)) {
+            if ($stmt instanceof ClassMethod && $this->storage->process($stmt)) {
                 $class->stmts[$k] = new Nop();
             }
         }
-        $this->storage = $storage;
     }
     public function enterStaticCall(StaticCall $call): void
     {
