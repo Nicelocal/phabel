@@ -26,11 +26,11 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
-use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\Do_;
 use PhpParser\Node\Stmt\Else_;
+use PhpParser\Node\Stmt\ElseIf_;
 use PhpParser\Node\Stmt\Expression;
 use PhpParser\Node\Stmt\For_;
 use PhpParser\Node\Stmt\Foreach_;
@@ -49,6 +49,7 @@ use SplStack;
  */
 class Context
 {
+    public const INSERT_BEFORE = 'Context:insertBefore';
     /**
      * Parent nodes stack.
      *
@@ -372,9 +373,12 @@ class Context
             );
             $parent = $result;
         } elseif ($parent instanceof While_) {
-            $parent->stmts = array_merge($parent->stmts, $insert);
+            $parent->stmts = \array_merge($parent->stmts, $insert);
         } elseif ($parent instanceof Do_) {
-            $parent->stmts = array_merge($parent->stmts, $insert);
+            $parent->stmts = \array_merge($parent->stmts, $insert);
+            return;
+        } elseif ($parent instanceof ElseIf_ && $parentKey === 'cond') {
+            $parent->setAttribute(self::INSERT_BEFORE, $insert);
             return;
         }
         $this->insertBefore($parent, ...(\is_array($insert) ? $insert : [$insert]));

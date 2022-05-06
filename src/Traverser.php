@@ -13,6 +13,8 @@ use Phabel\Tasks\Init;
 use Phabel\Tasks\Run;
 use Phabel\Tasks\Shutdown;
 use PhpParser\Node;
+use PhpParser\Node\Stmt\Else_;
+use PhpParser\Node\Stmt\If_;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
@@ -859,6 +861,21 @@ class Traverser
                         }
                         $node = $result;
                     }
+                }
+            }
+        }
+
+        if ($node instanceof If_) {
+            $if = $node;
+            $elseifs = $if->elseifs;
+            $if->elseifs = [];
+            foreach ($elseifs as $elseif) {
+                if ($toInsert = $elseif->getAttribute(Context::INSERT_BEFORE)) {
+                    $elseif->setAttribute(Context::INSERT_BEFORE, null);
+                    $if->else = new Else_([...$toInsert, $ifNew = new If_($elseif->cond, ['stmts' => $elseif->stmts, 'elseifs' => [], 'else' => $if->else])]);
+                    $if = $ifNew;
+                } else {
+                    $if->elseifs [] = $elseif;
                 }
             }
         }

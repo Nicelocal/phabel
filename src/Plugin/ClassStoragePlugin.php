@@ -332,7 +332,7 @@ final class ClassStoragePlugin extends Plugin
                     $const = new ReflectionClassConstant($class->getName(), $key);
                     if ($const->isPrivate()) {
                         $visibility = StmtClass_::MODIFIER_PRIVATE;
-                    } else if ($const->isProtected()) {
+                    } elseif ($const->isProtected()) {
                         $visibility = StmtClass_::MODIFIER_PROTECTED;
                     } else {
                         $visibility = StmtClass_::MODIFIER_PUBLIC;

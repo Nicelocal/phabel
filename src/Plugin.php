@@ -120,12 +120,12 @@ abstract class Plugin extends Tools implements PluginInterface
             self::$polyCache[static::class] = [];
             $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
             $printer = new Standard();
-            $ast = $parser->parse(file_get_contents($reflection->getFileName()));
+            $ast = $parser->parse(\file_get_contents($reflection->getFileName()));
             $finder = new NodeFinder;
             foreach ($finder->findInstanceOf($ast, ClassMethod::class) as $method) {
                 if ($method->isPublic() && $method->isStatic()) {
                     $realName = $method->name->name;
-                    $method->name->name .= '_'.hash('sha256', $printer->prettyPrint([$method]));
+                    $method->name->name .= '_'.\hash('sha256', $printer->prettyPrint([$method]));
                     self::$polyCache[static::class][$realName] = $method;
                 }
             }

@@ -58,7 +58,7 @@ abstract class ClassStorageProvider extends Plugin implements JsonSerializable
             $name .= "@".$this->count[$file][$name]++;
         }
         $this->storage = $this->getGlobalClassStorage()->getClass($file, $name);
-        
+
         if ($class->hasAttribute(self::PROCESSED)) {
             return;
         }
