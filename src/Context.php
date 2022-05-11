@@ -378,7 +378,7 @@ class Context
             $parent->stmts = \array_merge($parent->stmts, $insert);
             return;
         } elseif ($parent instanceof ElseIf_ && $parentKey === 'cond') {
-            $parent->setAttribute(self::INSERT_BEFORE, $insert);
+            $parent->setAttribute(self::INSERT_BEFORE, [...$parent->getAttribute(self::INSERT_BEFORE, []), ...$insert]);
             return;
         }
         $this->insertBefore($parent, ...(\is_array($insert) ? $insert : [$insert]));
