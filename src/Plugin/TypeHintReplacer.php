@@ -520,7 +520,7 @@ class TypeHintReplacer extends Plugin
             $parent = $ctx->parents->top();
             if ($parent instanceof Interface_ || $func->getStmts() === null) {
                 foreach ($func->getParams() as $param) {
-                    if ($this->strip($ctx, $phpdoc, $param, $param->type, null, false, $this->getConfig('params', false))) {
+                    if ($this->strip($ctx, $phpdoc, $param, $param->type, null, false, $this->getConfig('params', false) || ($this->getConfig('byRef', false) && $param->byRef))) {
                         $param->type = null;
                     }
                 }
@@ -556,7 +556,7 @@ class TypeHintReplacer extends Plugin
         $stmts = [];
         foreach ($func->getParams() as $index => $param) {
             $nullish = $param->default instanceof ConstFetch && $param->default->name->toLowerString() === 'null';
-            if (!$condition = $this->strip($ctx, $phpdoc, $param, $param->type, $className, $nullish, $this->getConfig('params', false))) {
+            if (!$condition = $this->strip($ctx, $phpdoc, $param, $param->type, $className, $nullish, $this->getConfig('params', false) || ($this->getConfig('byRef', false) && $param->byRef))) {
                 continue;
             }
             $index++;
