@@ -297,7 +297,7 @@ class Context
         //
         // Unless we want to go crazy, do not consider side effect evaluation order for stuff like function call arguments, maths and so on.
         //
-        if ($parent instanceof BooleanOr && $parentKey === 'right' && Tools::hasSideEffects($parent->right)) {
+        if ($parent instanceof BooleanOr && $parentKey === 'right') {
             $result = $this->getVariable();
             $insert = new If_(
                 $parent->left,
@@ -312,7 +312,7 @@ class Context
                 ]
             );
             $parent = $result;
-        } elseif ($parent instanceof BooleanAnd && $parentKey === 'right' && Tools::hasSideEffects($parent->right)) {
+        } elseif ($parent instanceof BooleanAnd && $parentKey === 'right') {
             $result = $this->getVariable();
             $insert = new If_(
                 $parent->left,
@@ -327,7 +327,7 @@ class Context
                 ]
             );
             $parent = $result;
-        } elseif ($parent instanceof Ternary && $parentKey !== 'cond' && (Tools::hasSideEffects($parent->if) || Tools::hasSideEffects($parent->else))) {
+        } elseif ($parent instanceof Ternary && $parentKey !== 'cond') {
             $result = $this->getVariable();
             if (!$parent->if) { // ?:
                 $insert = new If_(
